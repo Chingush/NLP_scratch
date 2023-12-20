@@ -4,16 +4,11 @@ from sklearn.model_selection import train_test_split
 import streamlit as st
 
 
-def predict_news():
-    # Загрузка модели
-    classifier = BertClassifier(
-        model_path='cointegrated/rubert-tiny2',
-        tokenizer_path='cointegrated/rubert-tiny2',
-        n_classes=2,
-        epochs=4,
-        model_save_path='bert.pt'
-    )
-
+def predict_news(classifier):
+    
+    if st.button("Переобучить модель"):
+        st.write("Модель переобучается...")
+        retrain_model(classifier)
     # Вывод формы для ввода новости
     news = st.text_area("Вставьте новость", height=100)
 
@@ -35,32 +30,56 @@ def predict_news():
             update_model(news, 'net', 0)
     
     # Добавляем вывод для отладки
-    st.write("Это текст, который должен отображаться на странице")
+
+def retrain_model(classifier):
+    # Загрузка данных для обучения
+    data = pd.read_excel('dataset.xlsx')
+    X = data['news']
+    y = data['class']
+
+    # Разделение данных на обучающий и тестовый наборы (если это необходимо)
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Создание экземпляра модели и обучение её на данных
+
+    
+    classifier.retrain_model(X_train, y_train, X_valid, y_valid)
+
+
+    st.write("Модель переобучена.")
+
 
 def update_model(new_data, label, answer):
-    # Загрузка данных для начального обучения
-    data = pd.read_excel('dataset.xlsx')
+    # Загрузка данных из файла
+    try:
+        data = pd.read_excel('dataset.xlsx')
+    except FileNotFoundError:
+        # Если файл отсутствует, создаем пустой DataFrame
+        data = pd.DataFrame(columns=['news', 'class'])
+
     if(label == 'Bad'):
-       label = -1
+        label = -1
     elif(label == 'Good'):
-       label = 1
+        label = 1
     else:
         label = 0
     label = label * answer
+
+    # Создание новой записи и добавление её к существующим данным
     new_entry = pd.DataFrame({'news': [new_data], 'class': [label]})
     updated_data = pd.concat([data, new_entry], ignore_index=True)
-    print('Не вышло, не вышло!')
 
+    # Сохранение обновленных данных в файл
     updated_data.to_excel('dataset.xlsx', index=False)
-    
-    #X = updated_data['news']
-    #y = updated_data['class']
-    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    #classifier.preparation(X_train, y_train, X_test, y_test)
-    #classifier.fit()
-    #classifier.train()
 
-    if __name__ == "__main__":
-        predict_news()
 
+
+if __name__ == "__main__":
+    classifier = BertClassifier(
+        model_path='cointegrated/rubert-tiny2',
+        tokenizer_path='cointegrated/rubert-tiny2',
+        n_classes=2,
+        epochs=4,
+        model_save_path='bert.pt'
+    )
+    predict_news(classifier)

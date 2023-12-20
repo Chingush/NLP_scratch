@@ -194,4 +194,22 @@ class BertClassifier:
         prediction = torch.argmax(outputs.logits, dim=1).cpu().numpy()[0]
 
         return prediction
+    def retrain_model(self, X_train, y_train, X_valid, y_valid):
+        self.preparation(X_train, y_train, X_valid, y_valid)
+
+        best_accuracy = 0
+        for epoch in range(self.epochs):
+            print(f'Epoch {epoch + 1}/{self.epochs}')
+            train_acc, train_loss = self.fit()
+            print(f'Train loss {train_loss} accuracy {train_acc}')
+
+            val_acc, val_loss = self.eval()
+            print(f'Val loss {val_loss} accuracy {val_acc}')
+            print('-' * 10)
+
+            if val_acc > best_accuracy:
+                torch.save(self.model.state_dict(), self.model_save_path)
+                best_accuracy = val_acc
+
+        self.model.load_state_dict(torch.load(self.model_save_path))
 
