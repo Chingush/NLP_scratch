@@ -92,6 +92,7 @@ class BertClassifier:
         self.loss_fn = torch.nn.CrossEntropyLoss().to(self.device)
 
     def fit(self):
+        self.model.to(self.device)
         self.model = self.model.train()
         losses = []
         correct_predictions = 0
@@ -124,6 +125,7 @@ class BertClassifier:
         return train_acc, train_loss
 
     def eval(self):
+        self.model.to(self.device)
         self.model = self.model.eval()
         losses = []
         correct_predictions = 0
@@ -185,13 +187,14 @@ class BertClassifier:
 
         input_ids = out["input_ids"].to(self.device)
         attention_mask = out["attention_mask"].to(self.device)
-        self.model = torch.load("bert.pt", map_location=torch.device('cpu'))
+        self.model.to(self.device)
+        self.model = torch.load("bert.pt", map_location=torch.device('gpu'))
         outputs = self.model(
             input_ids=input_ids.unsqueeze(0),
             attention_mask=attention_mask.unsqueeze(0)
         )
 
-        prediction = torch.argmax(outputs.logits, dim=1).cpu().numpy()[0]
+        prediction = torch.argmax(outputs.logits, dim=1).gpu().numpy()[0]
 
         return prediction
     def retrain_model(self, X_train, y_train, X_valid, y_valid):
