@@ -1,77 +1,66 @@
+import os
 import pandas as pd
 from Class_Bert import BertClassifier
-from sklearn.model_selection import train_test_split
 import streamlit as st
+import requests
 
+def extract_keywords(text):
+    response = requests.post("https://wrapapi.com/use/nu_dayte_pochitaty/extract_keywords/extract/0.0.7", json={
+        "input_parameters": text,
+        "wrapAPIKey": "QCMnwFgcGaOfk6ytNVehETNKuEZ8n40h"
+    })
+
+    if response.status_code == 200:
+        response_data = response.json()
+        if 'rawData' in response_data:
+            raw_data = response_data['rawData']
+            if 'responses' in raw_data:
+                responses = raw_data['responses']
+                keyword_list = []
+                for item in responses:
+                    if 'body' in item:
+                        keyword_list.append(item['body'])
+                # Объединение элементов списка в одну строку через запятую
+                texxt = ', '.join(keyword_list)
+                return texxt
+
+    return texxt  
 
 def predict_news(classifier):
-    
-    if st.button("Переобучить модель"):
-        st.write("Модель переобучается...")
-        retrain_model(classifier)
-    # Вывод формы для ввода новости
     news = st.text_area("Вставьте новость", height=100)
-
-    # Обработка пользовательского ввода
+    
     if st.button("Начать предсказание"):
-        class_pred = ["Bad", "Good"][classifier.predict(news)]
+        newss = extract_keywords(news)
+        class_pred = ['Bad', 'Good'][classifier.predict(newss)]
         answer_class = st.empty()
         answer_class.text(class_pred)
 
-        correct_button = st.button("Правильно")
-        incorrect_button = st.button("Неправильно")
-        net_button = st.button("Не знаю")
-
-        if correct_button:
+        if st.button("Правильно"):
             update_model(news, class_pred, 1)
-        elif incorrect_button:
+        if st.button("Неправильно"):
             update_model(news, class_pred, -1)
-        elif net_button:
+        if st.button("Не знаю"):
             update_model(news, 'net', 0)
     
-    # Добавляем вывод для отладки
-
-def retrain_model(classifier):
-    # Загрузка данных для обучения
-    data = pd.read_excel('dataset.xlsx')
-    X = data['news']
-    y = data['class']
-
-    # Разделение данных на обучающий и тестовый наборы (если это необходимо)
-    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Создание экземпляра модели и обучение её на данных
-
-    
-    classifier.retrain_model(X_train, y_train, X_valid, y_valid)
-
-
-    st.write("Модель переобучена.")
-
-
-def update_model(new_data, label, answer):
-    # Загрузка данных из файла
+def update_model(news, predicted_class, feedback):
     try:
         data = pd.read_excel('dataset.xlsx')
     except FileNotFoundError:
-        # Если файл отсутствует, создаем пустой DataFrame
-        data = pd.DataFrame(columns=['news', 'class'])
+        data = pd.DataFrame(columns=['news', 'predicted_class'])
 
-    if(label == 'Bad'):
+    if predicted_class == 'Bad':
         label = -1
-    elif(label == 'Good'):
+    elif predicted_class == 'Good':
         label = 1
     else:
         label = 0
-    label = label * answer
 
-    # Создание новой записи и добавление её к существующим данным
-    new_entry = pd.DataFrame({'news': [new_data], 'class': [label]})
+    label *= feedback
+
+    new_entry = pd.DataFrame({'news': [news], 'predicted_class': [predicted_class]})
     updated_data = pd.concat([data, new_entry], ignore_index=True)
 
-    # Сохранение обновленных данных в файл
-    updated_data.to_excel('dataset.xlsx', index=False)
-
+    updated_data.to_excel('dataset.xlsx', index=False, mode='a', header=not os.path.exists('dataset.xlsx'))
 
 
 if __name__ == "__main__":
