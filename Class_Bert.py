@@ -1,5 +1,6 @@
 import os
 import re
+import torch.nn.functional as F
 import shutil
 
 import numpy as np
@@ -190,8 +191,11 @@ class BertClassifier:
             input_ids=input_ids.unsqueeze(0),
             attention_mask=attention_mask.unsqueeze(0)
         )
-
+        probabilities = F.softmax(outputs.logits, dim=1)
         prediction = torch.argmax(outputs.logits, dim=1).cpu().numpy()[0]
 
-        return prediction
+        return probabilities[0][0].item() * 100, probabilities[0][1].item() * 100, prediction
+        
+
+
  

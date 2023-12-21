@@ -32,7 +32,10 @@ def predict_news(classifier):
     keywords = extract_keywords(news)
 
     if st.button("Начать предсказание"):
-        predicted_class = ["Bad", "Good"][classifier.predict(keywords)]
+        prediction_bed_percentage, prediction_good_percentage, predicted_class = classifier.predict(keywords)
+        st.write(f"Bed: {prediction_bed_percentage:.2f}%")
+        st.write(f"Good: {prediction_good_percentage:.2f}%")
+        st.write(f"Predicted class: {'Bad' if predicted_class == 0 else 'Good'}")
         answer_class = st.empty()
         answer_class.text(predicted_class)
 
