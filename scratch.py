@@ -1,9 +1,10 @@
+
 import os
 import pandas as pd
 from Class_Bert import BertClassifier
 import streamlit as st
 import requests
-
+import time
 
 def extract_keywords(text):
     response = requests.post("https://wrapapi.com/use/nu_dayte_pochitaty/extract_keywords/extract/0.0.7", json={
@@ -27,11 +28,20 @@ def extract_keywords(text):
 
     return texxt  
 
+if 'clicked' not in st.session_state:
+    st.session_state.clicked = False
+
+def click_button_prediction():
+    st.session_state.clicked = True
+
 def predict_news(classifier):
     news = st.text_area("Вставьте новость", height=100)
     keywords = extract_keywords(news)
 
-    if st.button("Начать предсказание"):
+    st.button('Начать предсказание', on_click=click_button_prediction)
+
+    if st.session_state.clicked:
+        # The message and nested widget will remain on the page
         prediction_bed_percentage, prediction_good_percentage, predicted_class = classifier.predict(keywords)
         st.write(f"Bed: {prediction_bed_percentage:.2f}%")
         st.write(f"Good: {prediction_good_percentage:.2f}%")
@@ -39,14 +49,11 @@ def predict_news(classifier):
         answer_class = st.empty()
         answer_class.text(predicted_class)
 
-        feedback_options = ["Правильно", "Неправильно", "Не знаю"]
-        feedback = st.radio("Фидбек:", feedback_options)
-
-        if feedback == "Правильно":
+        if st.button("Правильно"):
             update_model(news, predicted_class, 1)
-        elif feedback == "Неправильно":
+        if st.button("Неправильно"):
             update_model(news, predicted_class, -1)
-        elif feedback == "Не знаю":
+        if st.button("Не знаю"):
             update_model(news, 'Неизвестно', 0)
 
 def update_model(news, predicted_class, feedback):
@@ -55,22 +62,23 @@ def update_model(news, predicted_class, feedback):
     except FileNotFoundError:
         data = pd.DataFrame(columns=['news', 'class'])
 
-    if predicted_class == 'Bad':
+    if predicted_class == 0:
         label = -1
-    elif predicted_class == 'Good':
+    elif predicted_class == 1:
         label = 1
     else:
         label = 0
 
     label *= feedback
 
-    new_entry = pd.DataFrame({'news': [news], 'label': [label]})
+    new_entry = pd.DataFrame({'news': [news], 'class': [label]})
     updated_data = pd.concat([data, new_entry], ignore_index=True)
 
     updated_data.to_excel('dataset.xlsx', index=False)
+    st.session_state.clicked = False
 
 
-if __name__ == "__main__":
+if name == "main":
     classifier = BertClassifier(
         model_path='cointegrated/rubert-tiny2',
         tokenizer_path='cointegrated/rubert-tiny2',
