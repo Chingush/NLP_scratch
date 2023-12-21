@@ -4,6 +4,7 @@ from Class_Bert import BertClassifier
 import streamlit as st
 import requests
 
+
 def extract_keywords(text):
     response = requests.post("https://wrapapi.com/use/nu_dayte_pochitaty/extract_keywords/extract/0.0.7", json={
         "input_parameters": text,
@@ -28,25 +29,28 @@ def extract_keywords(text):
 
 def predict_news(classifier):
     news = st.text_area("Вставьте новость", height=100)
-    
-    if st.button("Начать предсказание"):
-        newss = extract_keywords(news)
-        class_pred = ['Bad', 'Good'][classifier.predict(newss)]
-        answer_class = st.empty()
-        answer_class.text(class_pred)
+    keywords = extract_keywords(news)
 
-        if st.button("Правильно"):
-            update_model(news, class_pred, 1)
-        if st.button("Неправильно"):
-            update_model(news, class_pred, -1)
-        if st.button("Не знаю"):
-            update_model(news, 'net', 0)
-    
+    if st.button("Начать предсказание"):
+        predicted_class = ["Bad", "Good"][classifier.predict(keywords)]
+        answer_class = st.empty()
+        answer_class.text(predicted_class)
+
+        feedback_options = ["Правильно", "Неправильно", "Не знаю"]
+        feedback = st.radio("Фидбек:", feedback_options)
+
+        if feedback == "Правильно":
+            update_model(news, predicted_class, 1)
+        elif feedback == "Неправильно":
+            update_model(news, predicted_class, -1)
+        elif feedback == "Не знаю":
+            update_model(news, 'Неизвестно', 0)
+
 def update_model(news, predicted_class, feedback):
     try:
         data = pd.read_excel('dataset.xlsx')
     except FileNotFoundError:
-        data = pd.DataFrame(columns=['news', 'predicted_class'])
+        data = pd.DataFrame(columns=['news', 'class'])
 
     if predicted_class == 'Bad':
         label = -1
@@ -57,10 +61,10 @@ def update_model(news, predicted_class, feedback):
 
     label *= feedback
 
-    new_entry = pd.DataFrame({'news': [news], 'predicted_class': [predicted_class]})
+    new_entry = pd.DataFrame({'news': [news], 'label': [label]})
     updated_data = pd.concat([data, new_entry], ignore_index=True)
 
-    updated_data.to_excel('dataset.xlsx', index=False, mode='a', header=not os.path.exists('dataset.xlsx'))
+    updated_data.to_excel('dataset.xlsx', index=False)
 
 
 if __name__ == "__main__":
